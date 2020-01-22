@@ -24,16 +24,9 @@ var Tokenizer = /** @class */ (function () {
             rex.lastIndex = this.idx; //tell where to start searching
             var m = rex.exec(this.inputData); //do the search
             if (m) {
-                //m[0] contains matched text as string
                 var lexeme = m[0];
                 this.idx += lexeme.length;
                 if (sym !== "WHITESPACE" && sym !== "COMMENT") {
-                    var p = rex.exec(this.inputData[this.idx]);
-                    while (p) {
-                        this.idx++;
-                        lexeme += p[0];
-                        p = rex.exec(this.inputData[this.idx]);
-                    }
                     return new Token_1.Token(sym, lexeme, this.lineNumber);
                     //return new Token using sym, lexeme, and line number
                 }

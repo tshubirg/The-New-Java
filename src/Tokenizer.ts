@@ -28,30 +28,25 @@ export class Tokenizer
             return new Token("$",undefined,this.lineNumber);
         }
         
-        for(let i=0;i<this.grammar.Gram.length;++i){
+        for(let i=0;i<this.grammar.Gram.length;++i)
+        {
             let terminal = this.grammar.Gram[i];
             let sym = terminal[0];
             let rex = new RegExp(terminal[1],"gy");   //RegExp
             rex.lastIndex = this.idx;   //tell where to start searching
 
             let m = rex.exec(this.inputData);   //do the search
-            if( m ){
-                //m[0] contains matched text as string
-
+            if( m )
+            {
                 let lexeme = m[0];
                 this.idx += lexeme.length;
-                if( sym !== "WHITESPACE" && sym !== "COMMENT" ){
-                    
-                    let p = rex.exec(this.inputData[this.idx])
-                    while ( p )
-                    {   
-                        this.idx++
-                        lexeme += p[0]
-                        p = rex.exec(this.inputData[this.idx])
-                    }
+                if( sym !== "WHITESPACE" && sym !== "COMMENT" )
+                {
                     return new Token(sym,lexeme,this.lineNumber)
                     //return new Token using sym, lexeme, and line number
-                } else {
+                } 
+                else 
+                {
                     //skip whitespace and get next real token
                     this.lineNumber += lexeme.split('\n').length-1
                     return this.next();
