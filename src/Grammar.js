@@ -2,6 +2,7 @@
 exports.__esModule = true;
 var Grammar = /** @class */ (function () {
     function Grammar(reg) {
+        this.Gram = new Array();
         var allRegs = new Set();
         var splitted = reg.split("\n");
         var nameReg = new RegExp("([A-Z_]+) -> ", "g");
@@ -23,8 +24,12 @@ var Grammar = /** @class */ (function () {
             else {
                 throw new Error("Invalid Regex" + splitMore[2]);
             }
+            var adding = splitted[n].split(" -> ");
             n += 1;
+            this.Gram.push([adding[0], new RegExp(adding[1])]);
         }
+        //console.log(this.Gram)
+        this.Gram.push(["WHITESPACE", new RegExp("\\s+")]);
     }
     return Grammar;
 }());

@@ -1,0 +1,67 @@
+
+import {Token} from "./Token"
+import {Grammar} from "./Grammar"
+
+export class Tokenizer
+{
+    grammar: Grammar;
+    inputData: string;
+    lineNumber: number;
+    idx: number;    //index of next unparsed char in inputData
+
+    constructor( grammar: Grammar )
+    {
+        this.grammar = grammar;
+        this.lineNumber = 1;
+        this.idx = 0;
+    }
+    setInput( inputData: string )
+    {
+        this.inputData = inputData
+    }
+    next(): Token 
+    {
+        if( this.idx >= this.inputData.length-1 ){
+            //special "end of file" metatoken
+            this.lineNumber=1;
+            this.idx = 0;
+            return new Token("$",undefined,this.lineNumber);
+        }
+        
+        for(let i=0;i<this.grammar.Gram.length;++i){
+            let terminal = this.grammar.Gram[i];
+            let sym = terminal[0];
+            let rex = new RegExp(terminal[1],"gy");   //RegExp
+            rex.lastIndex = this.idx;   //tell where to start searching
+
+            let m = rex.exec(this.inputData);   //do the search
+            if( m ){
+                //m[0] contains matched text as string
+
+                let lexeme = m[0];
+                this.idx += lexeme.length;
+                if( sym !== "WHITESPACE" && sym !== "COMMENT" ){
+                    
+                    let p = rex.exec(this.inputData[this.idx])
+                    while ( p )
+                    {   
+                        this.idx++
+                        lexeme += p[0]
+                        p = rex.exec(this.inputData[this.idx])
+                    }
+                    return new Token(sym,lexeme,this.lineNumber)
+                    //return new Token using sym, lexeme, and line number
+                } else {
+                    //skip whitespace and get next real token
+                    this.lineNumber += lexeme.split('\n').length-1
+                    return this.next();
+                }
+                
+            }
+        }
+        //no match; syntax error
+        throw new Error("No Matches Found");
+    }
+}
+
+

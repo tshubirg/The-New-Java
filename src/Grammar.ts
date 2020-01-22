@@ -2,6 +2,7 @@
 export class Grammar
 {
     
+    Gram : Array<[string,RegExp]> = new Array()
 
     constructor(reg : string)
     {
@@ -33,9 +34,13 @@ export class Grammar
             {
                 throw new Error("Invalid Regex"+splitMore[2])
             }
-            n += 1
-        }
+            let adding : Array<string> = splitted[n].split(" -> ")
 
+            n += 1
+            this.Gram.push([adding[0],new RegExp(adding[1])])
+        }
+        //console.log(this.Gram)
+        this.Gram.push(["WHITESPACE", new RegExp("\\s+")])
     }
 
 } 
