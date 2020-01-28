@@ -1,47 +1,205 @@
 
+class NodeType
+{
+    label: string;
+    n : Array<NodeType> = new Array();
+    Constructor(L: string){
+        this.label = L;
+        this.n = [];
+    }
+}
+
+function dfs(N:NodeType, v: Set<string>, nonterm: Array<[string,string]>)
+{
+    if(v != undefined)
+        v.add(N.label);
+
+    let found = nonterm.find(e => e[0] === N.label);
+    if(found !== undefined)
+    {
+        let s = found[1];
+        s = s.replace('|', ' ');
+        s = s.replace(',', ' ');
+        s.split(new RegExp('\\b')).forEach(t =>
+        {
+            
+            let tmp = t.trim();
+            //console.log(tmp)
+            if(tmp !== '')
+            {
+                let temp_node : NodeType = new NodeType();
+                temp_node.label = tmp;
+                N.n.push(temp_node);
+            }
+        });
+    }
+
+    if(N.n != undefined)
+    {
+
+        N.n.forEach((w:NodeType) =>
+        {
+            if(!v.has(w.label)){
+            dfs(w, v, nonterm);
+            }
+        });
+    }
+}
+  
+
 export class Grammar
 {
     
-    Gram : Array<[string,RegExp]> = new Array()
+    term : Array<[string,string]> = new Array()
+    nonterm : Array<[string,string]> = new Array()
+    Gram : Array<[string,string]> = new Array()
 
     constructor(reg : string)
     {
         let allRegs = new Set();
         let splitted = reg.split("\n");
+        //console.log(splitted)
         let nameReg = new RegExp( "([A-Z_]+) -> ", "g" ); 
+        let term : Boolean = true;
+        let addBool : Boolean = true;
         var n = 0
         while (n < splitted.length-1)
         {
-            let splitMore = splitted[n].split(" ");
+            let splitMore = splitted[n].split(" -> ");
             if(allRegs.has(splitMore[0]))
             {
                 throw new Error("Two or more of the same Regex"+splitMore[2])
             }
-                
-            if (splitMore[1] == '->')
+            
+            //console.log(splitMore.length)
+            if(term)
             {
-                try
+                if (splitMore.length > 1)
                 {
-                    let testReg = new RegExp(splitMore[2])
+                    try
+                    {
+                        //console.log(splitMore[1])
+                        let testReg = new RegExp(splitMore[1])
+                    }
+                    catch
+                    {
+                        throw new Error("Invalid Regex"+splitMore[1])
+                    }
+                    allRegs.add(splitMore[0])
                 }
-                catch
+                else if(splitMore[0] == "")
                 {
-                    throw new Error("Invalid Regex"+splitMore[2])
+                    //console.log("mad")
+                    term = !term    
+                } 
+                else
+                {
+                    
+                    throw new Error("Invalid Regex"+splitMore[1])
                 }
-                allRegs.add(splitMore[0])
             }
             else
             {
-                throw new Error("Invalid Regex"+splitMore[2])
-            }
-            let adding : Array<string> = splitted[n].split(" -> ")
+                if (splitMore.length > 1)
+                {
+                    if(this.term.includes([splitMore[0],splitMore[1]]))
+                    {
+                        throw new Error("Nonterminal already defined as terminal")
+                    }
+                    let found = this.nonterm.find(matches => matches[0] === splitMore[0]);
+                    //console.log(found)
+                    if(found != undefined)
+                    {
+                        //console.log(found)
+                        let f = this.nonterm.indexOf(found)
+                        this.nonterm[f][1] +=  (" | " + splitMore[1]);
+                        //console.log(this.nonterm[f][1])
+                        addBool = false
+                    }
+                    else
+                    {
+                        this.nonterm.push([splitMore[0],splitMore[1]])
+                        addBool = false
+                    }
 
+                }
+                else if(splitMore[0] == "")
+                {
+                    //console.log("mad")
+                    term = !term    
+                } 
+            }
+            
+            let adding : Array<string> = splitted[n].split(" -> ")
             n += 1
-            this.Gram.push([adding[0],new RegExp(adding[1])])
+            if(addBool && splitMore[1] != undefined)
+                this.term.push([adding[0],adding[1]])
+            addBool = true
         }
         //console.log(this.Gram)
-        this.Gram.push(["WHITESPACE", new RegExp("\\s+")])
-    }
 
+        let node = new NodeType();
+        node.label = "expr"
+
+        let empty:Set<string> = new Set()
+        dfs(node, empty, this.nonterm)
+        //console.log(empty)
+        let cont : Boolean = true
+        empty.forEach(thing => {
+            for (let t = 0; t < this.nonterm.length; t++) 
+            {
+                const element = this.nonterm[t];
+                if(element[0] == thing)
+                {
+                    cont = false
+                    break;
+                }
+                    
+            }
+            if(cont)
+            {
+                for (let t = 0; t < this.term.length; t++) 
+                {
+                    const element = this.term[t];
+                    if(element[0] == thing)
+                    {
+                        break;
+                    }
+                    if(t == this.term.length-1)
+                    {
+                        throw new Error("Used but not defined")
+                    }
+                        
+                }
+            }
+            cont = true
+        });
+
+        for (let t = 0; t < this.nonterm.length; t++) 
+        {
+            if(!empty.has(this.nonterm[t][0]))
+            {
+                throw new Error("Defined but not used" + this.nonterm[t][0])
+            }
+                
+        }
+
+        for (let t = 0; t < this.term.length; t++) 
+        {
+            if(!empty.has(this.term[t][0]))
+            {
+                throw new Error("Defined but not used" + this.term[t][0])
+            }
+                
+        }
+        if(!allRegs.has("WHITESPACE"))
+            this.term.push(["WHITESPACE", "\\s+"])
+        if(!allRegs.has("COMMENT"))
+            this.term.push(["COMMENT", "/[*](.|\n)*?[*]/"])
+
+        this.Gram = this.term.concat(this.nonterm)
+        //console.log(this.Gram)
+    }
+    
 } 
 
