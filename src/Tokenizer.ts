@@ -40,15 +40,16 @@ export class Tokenizer
             {
                 let lexeme = m[0];
                 this.idx += lexeme.length;
+                let temp = this.lineNumber
+                this.lineNumber += lexeme.split('\n').length-1
                 if( sym !== "WHITESPACE" && sym !== "COMMENT" )
                 {
-                    return new Token(sym,lexeme,this.lineNumber)
+                    return new Token(sym,lexeme,temp)
                     //return new Token using sym, lexeme, and line number
                 } 
                 else 
                 {
                     //skip whitespace and get next real token
-                    this.lineNumber += lexeme.split('\n').length-1
                     return this.next();
                 }
                 

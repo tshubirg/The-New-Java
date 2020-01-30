@@ -42,6 +42,5 @@ export class Grammar
         //console.log(this.Gram)
         this.Gram.push(["WHITESPACE", new RegExp("\\s+")])
     }
-
 } 
 
