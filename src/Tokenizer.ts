@@ -8,7 +8,7 @@ export class Tokenizer
     inputData: string;
     lineNumber: number;
     idx: number;    //index of next unparsed char in inputData
-
+    allT:Token[] = [];
     constructor( grammar: Grammar )
     {
         this.grammar = grammar;
@@ -18,6 +18,14 @@ export class Tokenizer
     setInput( inputData: string )
     {
         this.inputData = inputData
+    }
+    pprevious() : Token
+    {
+        return this.allT[this.allT.length-3]
+    }
+    previous() : Token
+    {
+        return this.allT[this.allT.length-2]
     }
     next(): Token 
     {
@@ -40,15 +48,17 @@ export class Tokenizer
             {
                 let lexeme = m[0];
                 this.idx += lexeme.length;
+                let temp = this.lineNumber
+                this.lineNumber += lexeme.split('\n').length-1
                 if( sym !== "WHITESPACE" && sym !== "COMMENT" )
                 {
-                    return new Token(sym,lexeme,this.lineNumber)
+                    this.allT.push(new Token(sym,lexeme,this.lineNumber))
+                    return new Token(sym,lexeme,temp)
                     //return new Token using sym, lexeme, and line number
                 } 
                 else 
                 {
                     //skip whitespace and get next real token
-                    this.lineNumber += lexeme.split('\n').length-1
                     return this.next();
                 }
                 

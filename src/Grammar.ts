@@ -139,7 +139,7 @@ export class Grammar
         //console.log(this.Gram)
 
         let node = new NodeType();
-        node.label = "expr"
+        node.label = this.nonterm[0][0]
 
         let empty:Set<string> = new Set()
         dfs(node, empty, this.nonterm)
@@ -165,9 +165,9 @@ export class Grammar
                     {
                         break;
                     }
-                    if(t == this.term.length-1)
+                    if(t == this.term.length)
                     {
-                        throw new Error("Used but not defined")
+                        throw new Error("Used but not defined " + element[0])
                     }
                         
                 }

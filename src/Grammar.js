@@ -110,7 +110,7 @@ var Grammar = /** @class */ (function () {
         }
         //console.log(this.Gram)
         var node = new NodeType();
-        node.label = "expr";
+        node.label = this.nonterm[0][0];
         var empty = new Set();
         dfs(node, empty, this.nonterm);
         //console.log(empty)
@@ -129,8 +129,8 @@ var Grammar = /** @class */ (function () {
                     if (element[0] == thing) {
                         break;
                     }
-                    if (t == _this.term.length - 1) {
-                        throw new Error("Used but not defined");
+                    if (t == _this.term.length) {
+                        throw new Error("Used but not defined " + element[0]);
                     }
                 }
             }

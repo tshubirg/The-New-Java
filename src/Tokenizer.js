@@ -3,12 +3,19 @@ exports.__esModule = true;
 var Token_1 = require("./Token");
 var Tokenizer = /** @class */ (function () {
     function Tokenizer(grammar) {
+        this.allT = [];
         this.grammar = grammar;
         this.lineNumber = 1;
         this.idx = 0;
     }
     Tokenizer.prototype.setInput = function (inputData) {
         this.inputData = inputData;
+    };
+    Tokenizer.prototype.pprevious = function () {
+        return this.allT[this.allT.length - 3];
+    };
+    Tokenizer.prototype.previous = function () {
+        return this.allT[this.allT.length - 2];
     };
     Tokenizer.prototype.next = function () {
         if (this.idx >= this.inputData.length - 1) {
@@ -26,13 +33,15 @@ var Tokenizer = /** @class */ (function () {
             if (m) {
                 var lexeme = m[0];
                 this.idx += lexeme.length;
+                var temp = this.lineNumber;
+                this.lineNumber += lexeme.split('\n').length - 1;
                 if (sym !== "WHITESPACE" && sym !== "COMMENT") {
-                    return new Token_1.Token(sym, lexeme, this.lineNumber);
+                    this.allT.push(new Token_1.Token(sym, lexeme, this.lineNumber));
+                    return new Token_1.Token(sym, lexeme, temp);
                     //return new Token using sym, lexeme, and line number
                 }
                 else {
                     //skip whitespace and get next real token
-                    this.lineNumber += lexeme.split('\n').length - 1;
                     return this.next();
                 }
             }
