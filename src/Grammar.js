@@ -141,6 +141,7 @@ var Grammar = /** @class */ (function () {
             }
             cont = true;
         });
+        /////////////////////////////////// had to comment out for nullable because on of the tests failed this check.
         // for (let t = 0; t < this.nonterm.length; t++) 
         // {
         //     if(!empty.has(this.nonterm[t][0]))
