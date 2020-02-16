@@ -16,11 +16,13 @@ function dfs(N, v, nonterm) {
     var found = nonterm.find(function (e) { return e[0] === N.label; });
     if (found !== undefined) {
         var s = found[1];
-        s = s.replace('|', ' ');
+        var rex = new RegExp('\\|', "g");
+        s = s.replace(rex, ' ');
         s = s.replace(',', ' ');
-        s.split(new RegExp('\\b')).forEach(function (t) {
+        //console.log(s)
+        s.split(new RegExp('\\s')).forEach(function (t) {
             var tmp = t.trim();
-            //console.log(tmp)
+            // console.log(tmp)
             if (tmp !== '') {
                 var temp_node = new NodeType();
                 temp_node.label = tmp;
@@ -41,6 +43,7 @@ var Grammar = /** @class */ (function () {
         var _this = this;
         this.term = new Array();
         this.nonterm = new Array();
+        this.nontermA = new Array();
         this.Gram = new Array();
         var allRegs = new Set();
         var splitted = reg.split("\n");
@@ -93,7 +96,7 @@ var Grammar = /** @class */ (function () {
                         addBool = false;
                     }
                 }
-                else if (splitMore[0] == "") {
+                else if (splitMore[0] == "" && term) {
                     //console.log("mad")
                     term = !term;
                 }
@@ -110,6 +113,8 @@ var Grammar = /** @class */ (function () {
         }
         //console.log(this.Gram)
         var node = new NodeType();
+        //console.log()
+        //console.log(this.term)
         node.label = this.nonterm[0][0];
         var empty = new Set();
         dfs(node, empty, this.nonterm);
@@ -136,23 +141,64 @@ var Grammar = /** @class */ (function () {
             }
             cont = true;
         });
-        for (var t = 0; t < this.nonterm.length; t++) {
-            if (!empty.has(this.nonterm[t][0])) {
-                throw new Error("Defined but not used" + this.nonterm[t][0]);
-            }
-        }
-        for (var t = 0; t < this.term.length; t++) {
-            if (!empty.has(this.term[t][0])) {
-                throw new Error("Defined but not used" + this.term[t][0]);
-            }
-        }
+        // for (let t = 0; t < this.nonterm.length; t++) 
+        // {
+        //     if(!empty.has(this.nonterm[t][0]))
+        //     {
+        //         throw new Error("Defined but not used" + this.nonterm[t][0])
+        //     }
+        // }
+        // for (let t = 0; t < this.term.length; t++) 
+        // {
+        //     if(!empty.has(this.term[t][0]))
+        //     {
+        //         throw new Error("Defined but not used" + this.term[t][0])
+        //     }
+        // }
         if (!allRegs.has("WHITESPACE"))
             this.term.push(["WHITESPACE", "\\s+"]);
         if (!allRegs.has("COMMENT"))
             this.term.push(["COMMENT", "/[*](.|\n)*?[*]/"]);
         this.Gram = this.term.concat(this.nonterm);
-        //console.log(this.Gram)
+        for (var i = 0; i < this.nonterm.length; i++)
+            this.nontermA.push(['', []]);
+        var _loop_2 = function (i) {
+            this_2.nontermA[i][0] = this_2.nonterm[i][0];
+            var s = this_2.nonterm[i][1];
+            var rex = new RegExp('\\|', "g");
+            if (s != undefined)
+                s.split(rex).forEach(function (t) {
+                    var tmp = t.trim();
+                    if (tmp !== '') {
+                        _this.nontermA[i][1].push(tmp);
+                    }
+                });
+        };
+        var this_2 = this;
+        for (var i = 0; i < this.nonterm.length; i++) {
+            _loop_2(i);
+        }
+        term = true;
     }
+    Grammar.prototype.getNullable = function () {
+        var nullable = new Set();
+        while (true) {
+            var t = true;
+            for (var i = 0; i < this.nontermA.length; i++) {
+                for (var f = 0; f < this.nontermA[i][1].length; f++) {
+                    if (this.nontermA[i][1][f].split(' ').every(function (sym) { return nullable.has(sym) || sym == 'lambda'; })) {
+                        if (!nullable.has(this.nontermA[i][0])) {
+                            nullable.add(this.nontermA[i][0]);
+                            t = false;
+                        }
+                    }
+                }
+            }
+            if (t)
+                break;
+        }
+        return nullable;
+    };
     return Grammar;
 }());
 exports.Grammar = Grammar;

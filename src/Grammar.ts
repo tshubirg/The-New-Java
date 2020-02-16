@@ -18,13 +18,15 @@ function dfs(N:NodeType, v: Set<string>, nonterm: Array<[string,string]>)
     if(found !== undefined)
     {
         let s = found[1];
-        s = s.replace('|', ' ');
+        let rex = new RegExp('\\|',"g"); 
+        s = s.replace(rex, ' ');
         s = s.replace(',', ' ');
-        s.split(new RegExp('\\b')).forEach(t =>
+        //console.log(s)
+        s.split(new RegExp('\\s')).forEach(t =>
         {
             
             let tmp = t.trim();
-            //console.log(tmp)
+            // console.log(tmp)
             if(tmp !== '')
             {
                 let temp_node : NodeType = new NodeType();
@@ -52,6 +54,7 @@ export class Grammar
     
     term : Array<[string,string]> = new Array()
     nonterm : Array<[string,string]> = new Array()
+    nontermA : Array<[string,string[]]> = new Array()
     Gram : Array<[string,string]> = new Array()
 
     constructor(reg : string)
@@ -123,7 +126,7 @@ export class Grammar
                     }
 
                 }
-                else if(splitMore[0] == "")
+                else if(splitMore[0] == "" && term)
                 {
                     //console.log("mad")
                     term = !term    
@@ -139,6 +142,8 @@ export class Grammar
         //console.log(this.Gram)
 
         let node = new NodeType();
+        //console.log()
+        //console.log(this.term)
         node.label = this.nonterm[0][0]
 
         let empty:Set<string> = new Set()
@@ -175,31 +180,76 @@ export class Grammar
             cont = true
         });
 
-        for (let t = 0; t < this.nonterm.length; t++) 
-        {
-            if(!empty.has(this.nonterm[t][0]))
-            {
-                throw new Error("Defined but not used" + this.nonterm[t][0])
-            }
+        // for (let t = 0; t < this.nonterm.length; t++) 
+        // {
+        //     if(!empty.has(this.nonterm[t][0]))
+        //     {
+        //         throw new Error("Defined but not used" + this.nonterm[t][0])
+        //     }
                 
-        }
+        // }
 
-        for (let t = 0; t < this.term.length; t++) 
-        {
-            if(!empty.has(this.term[t][0]))
-            {
-                throw new Error("Defined but not used" + this.term[t][0])
-            }
+        // for (let t = 0; t < this.term.length; t++) 
+        // {
+        //     if(!empty.has(this.term[t][0]))
+        //     {
+        //         throw new Error("Defined but not used" + this.term[t][0])
+        //     }
                 
-        }
+        // }
         if(!allRegs.has("WHITESPACE"))
             this.term.push(["WHITESPACE", "\\s+"])
         if(!allRegs.has("COMMENT"))
             this.term.push(["COMMENT", "/[*](.|\n)*?[*]/"])
 
         this.Gram = this.term.concat(this.nonterm)
-        //console.log(this.Gram)
+        for(let i = 0; i < this.nonterm.length;i++)
+            this.nontermA.push(['',[]])
+
+        for(let i = 0; i < this.nonterm.length;i++)
+        {
+            this.nontermA[i][0] = this.nonterm[i][0]
+            let s = this.nonterm[i][1]
+            let rex = new RegExp('\\|',"g"); 
+            if(s != undefined)
+                s.split(rex).forEach(t =>
+                {   
+                    let tmp = t.trim();
+                    if(tmp !== '')
+                    {
+                        this.nontermA[i][1].push(tmp)
+                    }
+                });
+        }
+        term = true
     }
-    
+
+    getNullable() : Set<string>
+    {
+        let nullable : Set<string> = new Set()
+
+        while(true)
+        {
+            let t = true
+            for(let i = 0; i < this.nontermA.length;i++)
+            {
+                for (let f = 0; f < this.nontermA[i][1].length; f++) 
+                {
+                    if(this.nontermA[i][1][f].split(' ').every( (sym: string) => nullable.has(sym) || sym == 'lambda')) 
+                    {
+                        if(!nullable.has(this.nontermA[i][0]))
+                        {
+                            nullable.add(this.nontermA[i][0])
+                            t = false
+                        }
+                    }
+                }
+            }
+            
+            if(t)
+                break
+        }
+        return nullable
+    }
 } 
 
