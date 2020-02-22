@@ -2,6 +2,7 @@
     "compilerOptions" : {
         "noEmitOnError": true,
         "lib" : ["es2017","dom"],
+	"downlevelIteration": true,
         "noImplicitAny": true,
         "moduleResolution": "Classic"
     },

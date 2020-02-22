@@ -21,12 +21,9 @@ function dfs(N:NodeType, v: Set<string>, nonterm: Array<[string,string]>)
         let rex = new RegExp('\\|',"g"); 
         s = s.replace(rex, ' ');
         s = s.replace(',', ' ');
-        //console.log(s)
         s.split(new RegExp('\\s')).forEach(t =>
-        {
-            
+        {           
             let tmp = t.trim();
-            // console.log(tmp)
             if(tmp !== '')
             {
                 let temp_node : NodeType = new NodeType();
@@ -56,12 +53,12 @@ export class Grammar
     nonterm : Array<[string,string]> = new Array()
     nontermA : Array<[string,string[]]> = new Array()
     Gram : Array<[string,string]> = new Array()
+    nullable : Set<string> = new Set()
 
     constructor(reg : string)
     {
         let allRegs = new Set();
         let splitted = reg.split("\n");
-        //console.log(splitted)
         let nameReg = new RegExp( "([A-Z_]+) -> ", "g" ); 
         let term : Boolean = true;
         let addBool : Boolean = true;
@@ -74,14 +71,12 @@ export class Grammar
                 throw new Error("Two or more of the same Regex"+splitMore[2])
             }
             
-            //console.log(splitMore.length)
             if(term)
             {
                 if (splitMore.length > 1)
                 {
                     try
                     {
-                        //console.log(splitMore[1])
                         let testReg = new RegExp(splitMore[1])
                     }
                     catch
@@ -92,7 +87,6 @@ export class Grammar
                 }
                 else if(splitMore[0] == "")
                 {
-                    //console.log("mad")
                     term = !term    
                 } 
                 else
@@ -110,13 +104,11 @@ export class Grammar
                         throw new Error("Nonterminal already defined as terminal")
                     }
                     let found = this.nonterm.find(matches => matches[0] === splitMore[0]);
-                    //console.log(found)
+
                     if(found != undefined)
                     {
-                        //console.log(found)
                         let f = this.nonterm.indexOf(found)
                         this.nonterm[f][1] +=  (" | " + splitMore[1]);
-                        //console.log(this.nonterm[f][1])
                         addBool = false
                     }
                     else
@@ -128,7 +120,6 @@ export class Grammar
                 }
                 else if(splitMore[0] == "" && term)
                 {
-                    //console.log("mad")
                     term = !term    
                 } 
             }
@@ -139,16 +130,14 @@ export class Grammar
                 this.term.push([adding[0],adding[1]])
             addBool = true
         }
-        //console.log(this.Gram)
 
         let node = new NodeType();
-        //console.log()
-        //console.log(this.term)
+
         node.label = this.nonterm[0][0]
 
         let empty:Set<string> = new Set()
         dfs(node, empty, this.nonterm)
-        //console.log(empty)
+   
         let cont : Boolean = true
         empty.forEach(thing => {
             for (let t = 0; t < this.nonterm.length; t++) 
@@ -179,28 +168,29 @@ export class Grammar
             }
             cont = true
         });
-/////////////////////////////////// had to comment out for nullable because on of the tests failed this check.
-        // for (let t = 0; t < this.nonterm.length; t++) 
-        // {
-        //     if(!empty.has(this.nonterm[t][0]))
-        //     {
-        //         throw new Error("Defined but not used" + this.nonterm[t][0])
-        //     }
-                
-        // }
 
-        // for (let t = 0; t < this.term.length; t++) 
-        // {
-        //     if(!empty.has(this.term[t][0]))
-        //     {
-        //         throw new Error("Defined but not used" + this.term[t][0])
-        //     }
+        for (let t = 0; t < this.nonterm.length; t++) 
+        {
+            if(!empty.has(this.nonterm[t][0]))
+            {
+                throw new Error("Defined but not used" + this.nonterm[t][0])
+            }
                 
-        // }
-        if(!allRegs.has("WHITESPACE"))
-            this.term.push(["WHITESPACE", "\\s+"])
-        if(!allRegs.has("COMMENT"))
-            this.term.push(["COMMENT", "/[*](.|\n)*?[*]/"])
+        }
+
+        for (let t = 0; t < this.term.length; t++) 
+        {
+            if(!empty.has(this.term[t][0]) && this.term[t][0] != 'COMMENT')
+            {
+                throw new Error("Defined but not used" + this.term[t][0])
+            }
+                
+        }
+
+        // if(!allRegs.has("WHITESPACE"))
+        //     this.term.push(["WHITESPACE", "\\s+"])
+        // if(!allRegs.has("COMMENT"))
+        //     this.term.push(["COMMENT", "/[*](.|\n)*?[*]/"])
 
         this.Gram = this.term.concat(this.nonterm)
         for(let i = 0; i < this.nonterm.length;i++)
@@ -222,11 +212,12 @@ export class Grammar
                 });
         }
         term = true
+
+        this.getNullable()
     }
 
     getNullable() : Set<string>
     {
-        let nullable : Set<string> = new Set()
 
         while(true)
         {
@@ -235,11 +226,11 @@ export class Grammar
             {
                 for (let f = 0; f < this.nontermA[i][1].length; f++) 
                 {
-                    if(this.nontermA[i][1][f].split(' ').every( (sym: string) => nullable.has(sym) || sym == 'lambda')) 
+                    if(this.nontermA[i][1][f].split(' ').every( (sym: string) => this.nullable.has(sym) || sym == 'lambda')) 
                     {
-                        if(!nullable.has(this.nontermA[i][0]))
+                        if(!this.nullable.has(this.nontermA[i][0]))
                         {
-                            nullable.add(this.nontermA[i][0])
+                            this.nullable.add(this.nontermA[i][0])
                             t = false
                         }
                     }
@@ -249,7 +240,60 @@ export class Grammar
             if(t)
                 break
         }
-        return nullable
+        return this.nullable
     }
+
+    getFirst() : Map<string,Set<string>>
+    {
+        let first : Map<string,Set<string>> = new Map()
+        
+        this.term.forEach(t => {
+            first.set(t[0],new Set<string>().add(t[0]))
+        })
+        let sont = 0
+        while(true)
+        {
+            let boo = true
+            let tempfirst = first
+            for(let i = 0; i < this.nontermA.length;i++)
+            {
+                for (let f = 0; f < this.nontermA[i][1].length; f++) 
+                {
+                    let ch = this.nontermA[i][1][f].split(' ')
+
+                    for (let t = 0; t < ch.length; t++) 
+                    {
+                        let tempp = first.get(this.nontermA[i][0])
+                        let tempc = first.get(ch[t])
+                        if( tempp == undefined)
+                        {
+                            tempp = new Set<string>()
+                        }
+                        if(tempc == undefined)
+                        {
+                            tempc = new Set<string>()
+                        }
+                        tempc.forEach(tempp.add,tempp)
+                        first.set(this.nontermA[i][0],tempp)
+
+                        if(tempfirst.size < first.size)
+                            boo = false
+                        if(!this.nullable.has(ch[t]) && ch[t] != 'lambda')
+                        {
+                            break
+                        }
+                    }
+                }
+            }
+            
+            if(boo && sont > this.nontermA.length)
+                break
+
+            sont++
+        }
+
+        return first
+    }
+    
 } 
 
