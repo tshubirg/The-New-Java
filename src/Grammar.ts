@@ -54,6 +54,8 @@ export class Grammar
     nontermA : Array<[string,string[]]> = new Array()
     Gram : Array<[string,string]> = new Array()
     nullable : Set<string> = new Set()
+    first : Map<string,Set<string>> = new Map()
+    follow : Map<string,Set<string>> = new Map()
 
     constructor(reg : string)
     {
@@ -214,6 +216,7 @@ export class Grammar
         term = true
 
         this.getNullable()
+        this.getFirst()
     }
 
     getNullable() : Set<string>
@@ -245,16 +248,16 @@ export class Grammar
 
     getFirst() : Map<string,Set<string>>
     {
-        let first : Map<string,Set<string>> = new Map()
+
         
         this.term.forEach(t => {
-            first.set(t[0],new Set<string>().add(t[0]))
+            this.first.set(t[0],new Set<string>().add(t[0]))
         })
         let sont = 0
         while(true)
         {
             let boo = true
-            let tempfirst = first
+            let tempfirst = this.first
             for(let i = 0; i < this.nontermA.length;i++)
             {
                 for (let f = 0; f < this.nontermA[i][1].length; f++) 
@@ -263,8 +266,8 @@ export class Grammar
 
                     for (let t = 0; t < ch.length; t++) 
                     {
-                        let tempp = first.get(this.nontermA[i][0])
-                        let tempc = first.get(ch[t])
+                        let tempp = this.first.get(this.nontermA[i][0])
+                        let tempc = this.first.get(ch[t])
                         if( tempp == undefined)
                         {
                             tempp = new Set<string>()
@@ -274,9 +277,9 @@ export class Grammar
                             tempc = new Set<string>()
                         }
                         tempc.forEach(tempp.add,tempp)
-                        first.set(this.nontermA[i][0],tempp)
+                        this.first.set(this.nontermA[i][0],tempp)
 
-                        if(tempfirst.size < first.size)
+                        if(tempfirst.size < this.first.size)
                             boo = false
                         if(!this.nullable.has(ch[t]) && ch[t] != 'lambda')
                         {
@@ -292,8 +295,80 @@ export class Grammar
             sont++
         }
 
-        return first
+        return this.first
     }
-    
+
+    getFollow() : Map<string,Set<string>>
+    {
+        this.follow.set(this.nontermA[0][0], new Set<string>().add("$"))
+        let sont = 0
+        
+        while(true)
+        {
+            let brek = false
+            let boo = true
+            let tempfollow = this.follow
+
+            for(let i = 0; i < this.nontermA.length;i++)
+            {
+                for (let f = 0; f < this.nontermA[i][1].length; f++) 
+                {
+                    let ch = this.nontermA[i][1][f].split(' ')
+
+                    for (let t = 0; t < ch.length; t++) 
+                    {
+                        if(this.nonterm.findIndex(e => e[0] == ch[t]) != -1)
+                        {
+                            for(let y =t+1; y < ch.length;y++)
+                            {
+                                let tempp = this.follow.get(ch[t])
+                                let tempc = this.first.get(ch[y])
+                                if( tempp == undefined)
+                                {
+                                    tempp = new Set<string>()
+                                }
+                                if(tempc == undefined)
+                                {
+                                    tempc = new Set<string>()
+                                }
+                                tempc.forEach(tempp.add,tempp)
+                                this.follow.set(ch[t],tempp)
+
+                                if(!this.nullable.has(ch[y]) && ch[y] != 'lambda')
+                                {
+                                    brek = true
+                                    break
+                                }
+
+                            }
+                            if(!brek)
+                            {
+                                let tt = this.follow.get(ch[t])
+                                let tn = this.follow.get(this.nontermA[i][0])
+                                if( tt == undefined)
+                                {
+                                    tt = new Set<string>()
+                                }
+                                if(tn == undefined)
+                                {
+                                    tn = new Set<string>()
+                                }
+                                tn.forEach(tt.add,tt)
+                                this.follow.set(ch[t],tt)
+                            }
+                            brek = false
+                        }
+                        if(tempfollow.size < this.follow.size)
+                            boo = false
+                    }
+                }
+            }
+            if(boo && sont > this.nontermA.length)
+                break
+
+            sont++
+        }
+        return this.follow
+    }
 } 
 

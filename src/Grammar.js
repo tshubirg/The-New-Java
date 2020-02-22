@@ -44,6 +44,8 @@ var Grammar = /** @class */ (function () {
         this.nontermA = new Array();
         this.Gram = new Array();
         this.nullable = new Set();
+        this.first = new Map();
+        this.follow = new Map();
         var allRegs = new Set();
         var splitted = reg.split("\n");
         var nameReg = new RegExp("([A-Z_]+) -> ", "g");
@@ -163,6 +165,7 @@ var Grammar = /** @class */ (function () {
         }
         term = true;
         this.getNullable();
+        this.getFirst();
     }
     Grammar.prototype.getNullable = function () {
         var _this = this;
@@ -184,20 +187,20 @@ var Grammar = /** @class */ (function () {
         return this.nullable;
     };
     Grammar.prototype.getFirst = function () {
-        var first = new Map();
+        var _this = this;
         this.term.forEach(function (t) {
-            first.set(t[0], new Set().add(t[0]));
+            _this.first.set(t[0], new Set().add(t[0]));
         });
         var sont = 0;
         while (true) {
             var boo = true;
-            var tempfirst = first;
+            var tempfirst = this.first;
             for (var i = 0; i < this.nontermA.length; i++) {
                 for (var f = 0; f < this.nontermA[i][1].length; f++) {
                     var ch = this.nontermA[i][1][f].split(' ');
                     for (var t = 0; t < ch.length; t++) {
-                        var tempp = first.get(this.nontermA[i][0]);
-                        var tempc = first.get(ch[t]);
+                        var tempp = this.first.get(this.nontermA[i][0]);
+                        var tempc = this.first.get(ch[t]);
                         if (tempp == undefined) {
                             tempp = new Set();
                         }
@@ -205,8 +208,8 @@ var Grammar = /** @class */ (function () {
                             tempc = new Set();
                         }
                         tempc.forEach(tempp.add, tempp);
-                        first.set(this.nontermA[i][0], tempp);
-                        if (tempfirst.size < first.size)
+                        this.first.set(this.nontermA[i][0], tempp);
+                        if (tempfirst.size < this.first.size)
                             boo = false;
                         if (!this.nullable.has(ch[t]) && ch[t] != 'lambda') {
                             break;
@@ -218,7 +221,67 @@ var Grammar = /** @class */ (function () {
                 break;
             sont++;
         }
-        return first;
+        return this.first;
+    };
+    Grammar.prototype.getFollow = function () {
+        this.follow.set(this.nontermA[0][0], new Set().add("$"));
+        var sont = 0;
+        while (true) {
+            var brek = false;
+            var boo = true;
+            var tempfollow = this.follow;
+            for (var i = 0; i < this.nontermA.length; i++) {
+                var _loop_3 = function (f) {
+                    var ch = this_3.nontermA[i][1][f].split(' ');
+                    var _loop_4 = function (t) {
+                        if (this_3.nonterm.findIndex(function (e) { return e[0] == ch[t]; }) != -1) {
+                            for (var y = t + 1; y < ch.length; y++) {
+                                var tempp = this_3.follow.get(ch[t]);
+                                var tempc = this_3.first.get(ch[y]);
+                                if (tempp == undefined) {
+                                    tempp = new Set();
+                                }
+                                if (tempc == undefined) {
+                                    tempc = new Set();
+                                }
+                                tempc.forEach(tempp.add, tempp);
+                                this_3.follow.set(ch[t], tempp);
+                                if (!this_3.nullable.has(ch[y]) && ch[y] != 'lambda') {
+                                    brek = true;
+                                    break;
+                                }
+                            }
+                            if (!brek) {
+                                var tt = this_3.follow.get(ch[t]);
+                                var tn = this_3.follow.get(this_3.nontermA[i][0]);
+                                if (tt == undefined) {
+                                    tt = new Set();
+                                }
+                                if (tn == undefined) {
+                                    tn = new Set();
+                                }
+                                tn.forEach(tt.add, tt);
+                                this_3.follow.set(ch[t], tt);
+                            }
+                            brek = false;
+                        }
+                        if (tempfollow.size < this_3.follow.size)
+                            boo = false;
+                    };
+                    for (var t = 0; t < ch.length; t++) {
+                        _loop_4(t);
+                    }
+                };
+                var this_3 = this;
+                for (var f = 0; f < this.nontermA[i][1].length; f++) {
+                    _loop_3(f);
+                }
+            }
+            if (boo && sont > this.nontermA.length)
+                break;
+            sont++;
+        }
+        return this.follow;
     };
     return Grammar;
 }());
