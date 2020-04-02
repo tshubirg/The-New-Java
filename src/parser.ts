@@ -1,6 +1,7 @@
 declare var require:any;
 import {TreeNode} from "./treeNode"
 import {walk} from "./treeNode"
+import {makeAsm} from "./asm"
 
 let antlr4 = require('./antlr4')
 let Lexer = require('./gramLexer.js').gramLexer;
@@ -26,8 +27,8 @@ export function parse(txt: string) {
     lexer.addErrorListener( handler );
     parser.removeErrorListeners()
     parser.addErrorListener( handler );
-    let antlrroot = parser.start();
+    let antlrroot = parser.program();
     let root : TreeNode = walk(parser,antlrroot);
-    return root.toString()
+    return makeAsm(root)
 }
 // add whitespace WHITESPACE : ( ' ' | '\t' | '\n' | '\r' )+ -> skip   ;

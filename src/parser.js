@@ -1,6 +1,7 @@
 "use strict";
 exports.__esModule = true;
 var treeNode_1 = require("./treeNode");
+var asm_1 = require("./asm");
 var antlr4 = require('./antlr4');
 var Lexer = require('./gramLexer.js').gramLexer;
 var Parser = require('./gramParser.js').gramParser;
@@ -25,9 +26,9 @@ function parse(txt) {
     lexer.addErrorListener(handler);
     parser.removeErrorListeners();
     parser.addErrorListener(handler);
-    var antlrroot = parser.start();
+    var antlrroot = parser.program();
     var root = treeNode_1.walk(parser, antlrroot);
-    return root.toString();
+    return asm_1.makeAsm(root);
 }
 exports.parse = parse;
 // add whitespace WHITESPACE : ( ' ' | '\t' | '\n' | '\r' )+ -> skip   ;
