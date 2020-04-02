@@ -1,5 +1,6 @@
 "use strict";
 exports.__esModule = true;
+var treeNode_1 = require("./treeNode");
 var Tokenizer_1 = require("./Tokenizer");
 var Grammar_1 = require("./Grammar");
 var operandStack = [];
@@ -34,16 +35,6 @@ var arity = {
     "LP": 2,
     "COMMA": 2
 };
-var TreeNode = /** @class */ (function () {
-    function TreeNode(sym, token) {
-        this.sym = '';
-        this.children = [];
-        this.sym = sym;
-        this.token = token;
-        this.children = [];
-    }
-    return TreeNode;
-}());
 function parse(inputData) {
     var gram = new Grammar_1.Grammar('POWOP -> [*][*]\n' +
         'MULOP -> [*/]\n' +
@@ -78,26 +69,26 @@ function parse(inputData) {
             if (p == undefined || p.sym == "LP" || operators[p.sym] != undefined) //checking if its a negate operator
              {
                 t.sym = "NEGATE";
-                operatorStack.push(new TreeNode(t.sym, t));
+                operatorStack.push(new treeNode_1.TreeNode(t.sym, t));
                 continue;
             }
         }
         var sym = t.sym;
         if (t.lexeme == "~") {
-            operatorStack.push(new TreeNode(t.sym, t));
+            operatorStack.push(new treeNode_1.TreeNode(t.sym, t));
         }
         else if (sym == 'NUM' || sym == 'ID') {
-            operandStack.push(new TreeNode(t.sym, t));
+            operandStack.push(new treeNode_1.TreeNode(t.sym, t));
         }
         else if (sym == 'LP') //checking if you need to add a func call to the stack
          {
             var p = tokenizer.previous();
             if (p != undefined && p.sym == 'ID') {
-                operatorStack.push(new TreeNode("func-call", undefined));
-                operatorStack.push(new TreeNode(t.sym, t));
+                operatorStack.push(new treeNode_1.TreeNode("func-call", undefined));
+                operatorStack.push(new treeNode_1.TreeNode(t.sym, t));
             }
             else
-                operatorStack.push(new TreeNode(t.sym, t));
+                operatorStack.push(new treeNode_1.TreeNode(t.sym, t));
         }
         else if (sym == 'RP') {
             var p = tokenizer.previous();
@@ -136,7 +127,7 @@ function parse(inputData) {
                 else
                     break;
             }
-            operatorStack.push(new TreeNode(t.sym, t));
+            operatorStack.push(new treeNode_1.TreeNode(t.sym, t));
         }
     }
     while (operatorStack.length != 0) {

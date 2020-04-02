@@ -1,4 +1,4 @@
-import {Token} from "./Token"
+import {TreeNode} from "./treeNode"
 import {Tokenizer} from "./Tokenizer"
 import { Grammar } from "./Grammar";
 
@@ -35,16 +35,7 @@ let arity: { [id: string] : number } = {
     "LP": 2,
     "COMMA": 2
 };
-class TreeNode{
-    sym: string ='';
-    token: Token;
-    children: TreeNode[] = []
-    constructor(sym: string, token: Token){
-        this.sym = sym;
-        this.token = token;
-        this.children = [];
-    }
-}
+
 
 export function parse( inputData: string )
 {
