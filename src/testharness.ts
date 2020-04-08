@@ -1,3 +1,5 @@
+﻿
+
 
 
 
@@ -183,9 +185,9 @@ function printSummary(){
             s2="Bonus group "+i+": OK:         ";
             s3="Bonus group "+i+": Bad:        ";
         }
-        console.log(s1,numCases[i]);
-        console.log(s2,numOK[i]," ",(numOK[i]==numCases[i])?goodEmoji:badEmoji);
-        console.log(s3,numBad[i]);
+        process.stderr.write(s1+" "+numCases[i]+"\n");
+        process.stderr.write(s2+" "+numOK[i]+"   "+ ( (numOK[i]==numCases[i])?goodEmoji:badEmoji)+"\n" );
+        process.stderr.write(s3+" "+numBad[i]+"\n");
     }
 }
 
@@ -369,7 +371,7 @@ function runOneTestcase(){
             let rv:any = subprocess.spawnSync( ex, [], opts );
             
             if( rv.error ){
-                if( rv.error.errno === "ETIMEDOUT" )
+                if( rv.error.errno === "ETIMEDOUT" || rv.error.code === "ETIMEDOUT" )
                     actualReturn = NEVER_RETURN;
                 else{
                     reportError(rv.error);

@@ -15,6 +15,7 @@ class ErrorHandler{
         throw new Error("Syntax error in ANTLR parse");
     }
 }
+//sh runantlr.sh /media/tshubirg/70741D6C741D35F6/Compiler/git/The-New-Java/src/gram.txt
 // dont forget export NODE_PATH=.
 export function parse(txt: string) {
     let stream = new antlr4.InputStream(txt);
@@ -22,6 +23,7 @@ export function parse(txt: string) {
     let tokens = new antlr4.CommonTokenStream(lexer);
     let parser = new Parser(tokens);
     parser.buildParseTrees = true;
+
     let handler = new ErrorHandler();
     lexer.removeErrorListeners();
     lexer.addErrorListener( handler );
