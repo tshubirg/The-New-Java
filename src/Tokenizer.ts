@@ -12,11 +12,11 @@ export class Tokenizer
     constructor( grammar: Grammar )
     {
         this.grammar = grammar;
-        this.lineNumber = 1;
-        this.idx = 0;
     }
     setInput( inputData: string )
     {
+        this.lineNumber = 1;
+        this.idx = 0;
         this.inputData = inputData
     }
     pprevious() : Token
@@ -27,25 +27,41 @@ export class Tokenizer
     {
         return this.allT[this.allT.length-2]
     }
+    peek() : Token
+    {
+        let tempInd = this.idx
+        let tempLN = this.lineNumber
+        let ret : Token
+        //console.log(tempInd)
+        ret = this.next()
+        //console.log(ret)
+        this.allT.pop()
+
+        
+        this.idx = tempInd
+        this.lineNumber = tempLN
+        return ret
+    }
+    
     next(): Token 
     {
+        //console.log("made it 1")
         if( this.idx >= this.inputData.length-1 ){
             //special "end of file" metatoken
-            this.lineNumber=1;
-            this.idx = 0;
             return new Token("$",undefined,this.lineNumber);
         }
-        
+        //console.log(this.grammar.Gram)
         for(let i=0;i<this.grammar.Gram.length;++i)
         {
             let terminal = this.grammar.Gram[i];
             let sym = terminal[0];
             let rex = new RegExp(terminal[1],"gy");   //RegExp
             rex.lastIndex = this.idx;   //tell where to start searching
-
+            //console.log(this.inputData[this.idx])
             let m = rex.exec(this.inputData);   //do the search
             if( m )
             {
+                //console.log("made it 3")
                 let lexeme = m[0];
                 this.idx += lexeme.length;
                 let temp = this.lineNumber
@@ -65,7 +81,17 @@ export class Tokenizer
             }
         }
         //no match; syntax error
+        console.log("No matches found")
         throw new Error("No Matches Found");
+    }
+    expect(input:string) : Token
+    {
+        //console.log("expect: "+ input)
+        let ne = this.next()
+        if(ne.sym != input)
+            throw new Error("Expected the unexpected.")
+
+        return ne
     }
 }
 

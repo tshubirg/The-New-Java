@@ -175,23 +175,23 @@ export class Grammar
             cont = true
         });
 
-        for (let t = 0; t < this.nonterm.length; t++) 
-        {
-            if(!empty.has(this.nonterm[t][0]))
-            {
-                throw new Error("Defined but not used" + this.nonterm[t][0])
-            }
+        // for (let t = 0; t < this.nonterm.length; t++) 
+        // {
+        //     if(!empty.has(this.nonterm[t][0]))
+        //     {
+        //         throw new Error("Defined but not used" + this.nonterm[t][0])
+        //     }
                 
-        }
+        // }
 
-        for (let t = 0; t < this.term.length; t++) 
-        {
-            if(!empty.has(this.term[t][0]))
-            {
-                throw new Error("Defined but not used" + this.term[t][0])
-            }
+        // for (let t = 0; t < this.term.length; t++) 
+        // {
+        //     if(!empty.has(this.term[t][0]))
+        //     {
+        //         throw new Error("Defined but not used" + this.term[t][0])
+        //     }
                 
-        }
+        // }
         if(!allRegs.has("WHITESPACE"))
             this.term.push(["WHITESPACE", "\\s+"])
         if(!allRegs.has("COMMENT"))

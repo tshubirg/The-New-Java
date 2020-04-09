@@ -5,10 +5,10 @@ var Tokenizer = /** @class */ (function () {
     function Tokenizer(grammar) {
         this.allT = [];
         this.grammar = grammar;
-        this.lineNumber = 1;
-        this.idx = 0;
     }
     Tokenizer.prototype.setInput = function (inputData) {
+        this.lineNumber = 1;
+        this.idx = 0;
         this.inputData = inputData;
     };
     Tokenizer.prototype.pprevious = function () {
@@ -17,20 +17,34 @@ var Tokenizer = /** @class */ (function () {
     Tokenizer.prototype.previous = function () {
         return this.allT[this.allT.length - 2];
     };
+    Tokenizer.prototype.peek = function () {
+        var tempInd = this.idx;
+        var tempLN = this.lineNumber;
+        var ret;
+        //console.log(tempInd)
+        ret = this.next();
+        //console.log(ret)
+        this.allT.pop();
+        this.idx = tempInd;
+        this.lineNumber = tempLN;
+        return ret;
+    };
     Tokenizer.prototype.next = function () {
+        //console.log("made it 1")
         if (this.idx >= this.inputData.length - 1) {
             //special "end of file" metatoken
-            this.lineNumber = 1;
-            this.idx = 0;
             return new Token_1.Token("$", undefined, this.lineNumber);
         }
+        //console.log(this.grammar.Gram)
         for (var i = 0; i < this.grammar.Gram.length; ++i) {
             var terminal = this.grammar.Gram[i];
             var sym = terminal[0];
             var rex = new RegExp(terminal[1], "gy"); //RegExp
             rex.lastIndex = this.idx; //tell where to start searching
+            //console.log(this.inputData[this.idx])
             var m = rex.exec(this.inputData); //do the search
             if (m) {
+                //console.log("made it 3")
                 var lexeme = m[0];
                 this.idx += lexeme.length;
                 var temp = this.lineNumber;
@@ -47,7 +61,15 @@ var Tokenizer = /** @class */ (function () {
             }
         }
         //no match; syntax error
+        console.log("No matches found");
         throw new Error("No Matches Found");
+    };
+    Tokenizer.prototype.expect = function (input) {
+        //console.log("expect: "+ input)
+        var ne = this.next();
+        if (ne.sym != input)
+            throw new Error("Expected the unexpected.");
+        return ne;
     };
     return Tokenizer;
 }());
