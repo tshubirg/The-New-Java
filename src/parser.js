@@ -14,6 +14,7 @@ var ErrorHandler = /** @class */ (function () {
     };
     return ErrorHandler;
 }());
+//sh runantlr.sh /media/tshubirg/70741D6C741D35F6/Compiler/git/The-New-Java/src/gram.txt
 // dont forget export NODE_PATH=.
 function parse(txt) {
     var stream = new antlr4.InputStream(txt);
