@@ -400,29 +400,24 @@ function factorNodeCode( n: TreeNode) : VarType{
             else
             {
                 let factorType = factorNodeCode(n.children[3])
-                if(n.children[1].token.lexeme == "int")
+                if(n.children[1].token.lexeme == "int" && factorType != VarType.INTEGER)
                 {
-                    if(factorType != VarType.INTEGER)
-                    {
-                        emit("movq  xmm0, [rsp]")
-                        emit("add rsp, 8")
-                        emit("roundsd xmm0, xmm0, 0xb")
-                        emit("cvtsd2si rax,xmm0")
-                        emit("push rax")
-                    }
+                    emit("movq  xmm0, [rsp]")
+                    emit("add rsp, 8")
+                    emit("roundsd xmm0, xmm0, 0xb")
+                    emit("cvtsd2si rax,xmm0")
+                    emit("push rax")
                     return VarType.INTEGER
                 }
-                else if(n.children[1].token.lexeme == "double")
+                else if(n.children[1].token.lexeme == "double" && factorType != VarType.FLOAT)
                 {
-                    if(factorType != VarType.FLOAT)
-                    {
-                        emit("pop rax")
-                        emit("cvtsi2sd xmm0, rax")
-                        emit("sub rsp, 8")
-                        emit("movq [rsp], xmm0")
-                    }
+                    emit("pop rax")
+                    emit("cvtsi2sd xmm0, rax")
+                    emit("sub rsp, 8")
+                    emit("movq [rsp], xmm0")
                     return VarType.FLOAT
                 }
+                return factorType
             }
         default:
             ICE();
