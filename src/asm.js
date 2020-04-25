@@ -1,5 +1,17 @@
 "use strict";
+var __values = (this && this.__values) || function(o) {
+    var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
+    if (m) return m.call(o);
+    if (o && typeof o.length === "number") return {
+        next: function () {
+            if (o && i >= o.length) o = void 0;
+            return { value: o && o[i++], done: !o };
+        }
+    };
+    throw new TypeError(s ? "Object is not iterable." : "Symbol.iterator is not defined.");
+};
 exports.__esModule = true;
+var stringPool = new Map();
 var asmCode = [];
 var VarType;
 (function (VarType) {
@@ -7,6 +19,77 @@ var VarType;
     VarType[VarType["FLOAT"] = 1] = "FLOAT";
     VarType[VarType["STRING"] = 2] = "STRING";
 })(VarType || (VarType = {}));
+var VarInfo = /** @class */ (function () {
+    //also the line number, if you want
+    function VarInfo(t, location) {
+        this.location = location;
+        this.type = t;
+    }
+    return VarInfo;
+}());
+function moveBytesFromStackToLocation(loc) {
+    emit("pop rax");
+    emit("mov [" + loc + "], rax");
+}
+var SymbolTable = /** @class */ (function () {
+    function SymbolTable() {
+        this.table = new Map();
+    }
+    SymbolTable.prototype.get = function (name) {
+        if (!this.table.has(name))
+            throw new Error("Bitch aint there");
+        return this.table.get(name);
+    };
+    SymbolTable.prototype.set = function (name, v) {
+        if (this.table.has(name))
+            throw new Error("Bitch already here");
+        this.table.set(name, v);
+    };
+    SymbolTable.prototype.has = function (name) {
+        return this.table.has(name);
+    };
+    return SymbolTable;
+}());
+var symtable = new SymbolTable();
+function outputSymbolTableInfo() {
+    var e_1, _a;
+    try {
+        for (var _b = __values(symtable.table.keys()), _c = _b.next(); !_c.done; _c = _b.next()) {
+            var vname = _c.value;
+            var vinfo = symtable.get(vname);
+            emit(vinfo.location + ":");
+            emit("dq 0");
+        }
+    }
+    catch (e_1_1) { e_1 = { error: e_1_1 }; }
+    finally {
+        try {
+            if (_c && !_c.done && (_a = _b["return"])) _a.call(_b);
+        }
+        finally { if (e_1) throw e_1.error; }
+    }
+}
+function outputStringPoolInfo() {
+    var e_2, _a;
+    try {
+        for (var _b = __values(stringPool.keys()), _c = _b.next(); !_c.done; _c = _b.next()) {
+            var key = _c.value;
+            var lbl = stringPool.get(key);
+            emit(lbl + ":");
+            for (var i = 0; i < key.length; ++i) {
+                emit("db " + key.charCodeAt(i));
+            }
+            emit("db 0"); //null terminator
+        }
+    }
+    catch (e_2_1) { e_2 = { error: e_2_1 }; }
+    finally {
+        try {
+            if (_c && !_c.done && (_a = _b["return"])) _a.call(_b);
+        }
+        finally { if (e_2) throw e_2.error; }
+    }
+}
 function convertStackTopToZeroOrOneInteger(type) {
     if (type == VarType.INTEGER) {
         emit("cmp qword [rsp], 0");
@@ -26,6 +109,8 @@ function convertStackTopToZeroOrOneInteger(type) {
     }
 }
 function makeAsm(root) {
+    stringPool = new Map();
+    symtable = new SymbolTable();
     asmCode = [];
     labelCounter = 0;
     emit("default rel");
@@ -35,6 +120,8 @@ function makeAsm(root) {
     programNodeCode(root);
     emit("ret");
     emit("section .data");
+    outputSymbolTableInfo();
+    outputStringPoolInfo();
     return asmCode.join("\n");
 }
 exports.makeAsm = makeAsm;
@@ -48,10 +135,11 @@ function emit(instr) {
     asmCode.push(instr);
 }
 function programNodeCode(n) {
-    //program -> braceblock
+    //program : varDeclList braceblock;
     if (n.sym != "program")
         ICE();
-    braceblockNodeCode(n.children[0]);
+    varDeclListNodeCode(n.children[0]);
+    braceblockNodeCode(n.children[1]);
 }
 function braceblockNodeCode(n) {
     //braceblock -> LBR stmts RBR
@@ -68,7 +156,7 @@ function ICE() {
     throw new Error("skate fast eat ass.");
 }
 function stmtNodeCode(n) {
-    //stmt -> cond | loop | return-stmt SEMI
+    //stmt : cond | loop | returnStmt SEMI | assign SEMI;
     var c = n.children[0];
     switch (c.sym) {
         case "cond":
@@ -79,6 +167,9 @@ function stmtNodeCode(n) {
             break;
         case "returnStmt":
             returnStmtNodeCode(c);
+            break;
+        case "assign":
+            assignNodeCode(c);
             break;
         default:
             ICE();
@@ -389,7 +480,21 @@ function factorNodeCode(n) {
                 }
                 return factorType;
             }
+        case "ID":
+            if (symtable.has(n.children[0].token.lexeme)) {
+                var ad = symtable.get(n.children[0].token.lexeme);
+                emit("push qword [" + ad.location + "]");
+                return ad.type;
+            }
+            else {
+                throw new Error("ID not in table");
+            }
+        case "STRINGCONST":
+            var a = stringconstantNodeCode(n.children[0]);
+            emit("push qword [" + a + "]");
+            return VarType.STRING;
         default:
+            console.log(child.sym);
             ICE();
     }
 }
@@ -418,5 +523,71 @@ function condNodeCode(n) {
         emit(endifLabel + ":");
         braceblockNodeCode(n.children[6]);
         emit(endelseLabel + ":");
+    }
+}
+function stringconstantNodeCode(n) {
+    var s = n.token.lexeme;
+    s.substring(1, s.length - 1);
+    if (!stringPool.has(s))
+        stringPool.set(s, label());
+    return stringPool.get(s); //return the label
+}
+function assignNodeCode(n) {
+    // assign -> ID EQ expr
+    var t = exprNodeCode(n.children[2]);
+    var vname = n.children[0].token.lexeme;
+    if (symtable.get(vname).type !== t)
+        throw new Error("Type mismatch: " + symtable.get(vname).type + " != " + t + ".");
+    moveBytesFromStackToLocation(symtable.get(vname).location);
+}
+function typeNodeCode(n) {
+    if (n.token.lexeme == "int") {
+        return VarType.INTEGER;
+    }
+    else if (n.token.lexeme == "string") {
+        return VarType.STRING;
+    }
+    else if (n.token.lexeme == "double") {
+        return VarType.FLOAT;
+    }
+    else {
+        throw new Error("shits whack");
+    }
+}
+function varDeclListNodeCode(n) {
+    //varDeclList : varDecl SEMI varDeclList |  ;
+    if (n.children.length > 0) {
+        varDeclNodeCode(n.children[0]);
+        varDeclListNodeCode(n.children[2]);
+    }
+    else {
+        return;
+    }
+}
+function pvarDeclNodeCode(n, v) {
+    //pVarDecl : CMA ID pVarDecl | ;
+    if (n.children.length > 0) {
+        var vname = n.children[1].token.lexeme;
+        symtable.set(vname, new VarInfo(v, label()));
+        pvarDeclNodeCode(n.children[2], v);
+    }
+    else {
+        return;
+    }
+}
+function varDeclNodeCode(n) {
+    //varDecl : TYPE ID pVarDecl | TYPE assign;
+    if (n.children.length == 3) {
+        var vname = n.children[1].token.lexeme;
+        var vtype = typeNodeCode(n.children[0]);
+        symtable.set(vname, new VarInfo(vtype, label()));
+        if (n.children[2] != undefined)
+            pvarDeclNodeCode(n.children[2], vtype);
+    }
+    else {
+        var vtype = typeNodeCode(n.children[0]);
+        var vname = n.children[1].children[0].token.lexeme;
+        symtable.set(vname, new VarInfo(vtype, label()));
+        assignNodeCode(n.children[1]);
     }
 }
