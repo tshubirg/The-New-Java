@@ -18,6 +18,7 @@ var VarType;
     VarType[VarType["INTEGER"] = 0] = "INTEGER";
     VarType[VarType["FLOAT"] = 1] = "FLOAT";
     VarType[VarType["STRING"] = 2] = "STRING";
+    VarType[VarType["VOID"] = 3] = "VOID";
 })(VarType || (VarType = {}));
 var VarInfo = /** @class */ (function () {
     //also the line number, if you want
@@ -76,8 +77,12 @@ function outputStringPoolInfo() {
             var key = _c.value;
             var lbl = stringPool.get(key);
             emit(lbl + ":");
+            var nl_f = void 0, be_f = false;
             for (var i = 0; i < key.length; ++i) {
-                emit("db " + key.charCodeAt(i));
+                if (key.charAt(i) === '\n')
+                    emit("db 10");
+                else
+                    emit("db " + key.charCodeAt(i));
             }
             emit("db 0"); //null terminator
         }
@@ -115,11 +120,30 @@ function makeAsm(root) {
     labelCounter = 0;
     emit("default rel");
     emit("section .text");
+    emit("%include 'doCall.asm' ");
     emit("global main");
     emit("main:");
+    emit("mov arg0, 0");
+    emit("mov arg1, string_r");
+    emit("ffcall fdopen");
+    emit("mov [stdin], rax");
+    emit("mov arg0, 1");
+    emit("mov arg1, string_w");
+    emit("ffcall fdopen");
+    emit("mov [stdout], rax");
     programNodeCode(root);
     emit("ret");
     emit("section .data");
+    emit("stdin: dq 0");
+    emit("string_a:       db 'a',0");
+    emit("string_rplus:   db 'r+',0");
+    emit("string_percent_s:    db '%s',0");
+    emit("string_percent_d:    db '%d',0");
+    emit("fgets_buffer:   times 64 db 0");
+    emit("stdout: dq 0");
+    emit("string_r: db 'r',0");
+    emit("string_w: db 'w',0");
+    //emit("")
     outputSymbolTableInfo();
     outputStringPoolInfo();
     return asmCode.join("\n");
@@ -156,7 +180,7 @@ function ICE() {
     throw new Error("skate fast eat ass.");
 }
 function stmtNodeCode(n) {
-    //stmt : cond | loop | returnStmt SEMI | assign SEMI;
+    //stmt : funcCall | cond | loop | returnStmt SEMI | assign SEMI;
     var c = n.children[0];
     switch (c.sym) {
         case "cond":
@@ -170,6 +194,9 @@ function stmtNodeCode(n) {
             break;
         case "assign":
             assignNodeCode(c);
+            break;
+        case "funcCall":
+            funcCallNodeCode(c);
             break;
         default:
             ICE();
@@ -491,8 +518,16 @@ function factorNodeCode(n) {
             }
         case "STRINGCONST":
             var a = stringconstantNodeCode(n.children[0]);
-            emit("push qword [" + a + "]");
+            emit("lea rcx,[" + a + "]");
+            emit("push rcx");
             return VarType.STRING;
+        case "funcCall":
+            var type = funcCallNodeCode(n.children[0]);
+            if (type === VarType.VOID)
+                throw new Error("no void boys");
+            emit("push rax");
+            return type;
+            break;
         default:
             console.log(child.sym);
             ICE();
@@ -527,9 +562,27 @@ function condNodeCode(n) {
 }
 function stringconstantNodeCode(n) {
     var s = n.token.lexeme;
-    s.substring(1, s.length - 1);
+    s = s.substring(1, s.length - 1);
+    var rex1 = new RegExp('\\\\"', "g");
+    var rex2 = new RegExp('\\\\\\\\', "g");
+    var rex3 = new RegExp('\\\\\\\\n', "g");
+    var temp = "";
+    for (var i = 0; i < s.length; i++) {
+        if (s.charAt(i) == '\\' && i + 1 < s.length && s.charAt(i + 1) == 'n') {
+            temp += '\n';
+            i += 2;
+        }
+        if (s.charAt(i) == '\\' && i + 1 < s.length) {
+            temp += s.charAt(i + 1);
+            i++;
+        }
+        else
+            temp += s.charAt(i);
+    }
+    s = temp;
     if (!stringPool.has(s))
         stringPool.set(s, label());
+    //console.log(stringPool);
     return stringPool.get(s); //return the label
 }
 function assignNodeCode(n) {
@@ -589,5 +642,121 @@ function varDeclNodeCode(n) {
         var vname = n.children[1].children[0].token.lexeme;
         symtable.set(vname, new VarInfo(vtype, label()));
         assignNodeCode(n.children[1]);
+    }
+}
+function funcCallNodeCode(n) {
+    return builtinFuncCallNodeCode(n.children[0]);
+}
+function builtinFuncCallNodeCode(n) {
+    //builtin-func-call -> PRINT LP expr RP | INPUT LP RP | OPEN LP expr RP | READ LP expr RP | WRITE LP expr CMA expr RP | CLOSE LP expr RP
+    switch (n.children[0].sym) {
+        case "OPEN":
+            {
+                var type = exprNodeCode(n.children[2]);
+                if (type !== VarType.STRING)
+                    throw new Error(" mismatch funccall open");
+                //tmp = fopen( filename, "a" );
+                emit("mov arg0, [rsp]"); //filename (string)
+                emit("mov arg1, string_a"); //next slide
+                emit("ffcall fopen");
+                //fclose(tmp)
+                emit("mov arg0, rax");
+                emit("ffcall fclose");
+                //fopen( filename, "r+" )
+                emit("pop arg0"); //filename; remove from stack
+                emit("mov arg1, string_rplus"); //next slide
+                emit("ffcall fopen"); //result is in rax
+                return VarType.INTEGER;
+            }
+        case "CLOSE":
+            {
+                var type = exprNodeCode(n.children[2]);
+                if (type !== VarType.INTEGER)
+                    throw new Error("Close requires numbers idiot");
+                emit("pop arg0"); //argument for fclose
+                emit("ffcall fclose");
+                return VarType.VOID;
+            }
+        case "WRITE":
+            {
+                // WRITE LP expr CMA expr RP
+                // fprintf( fp, "%s", str )  or  fprintf( fp, "%d", num )
+                var handletype = exprNodeCode(n.children[2]);
+                if (handletype !== VarType.INTEGER)
+                    throw new Error("write no int");
+                var outputtype = exprNodeCode(n.children[4]);
+                var fmt = void 0;
+                if (outputtype === VarType.INTEGER)
+                    fmt = "string_percent_d";
+                else if (outputtype === VarType.STRING)
+                    fmt = "string_percent_s";
+                else
+                    throw new Error("no int or string yikes");
+                emit("pop arg2"); //the thing to print
+                emit("mov arg1, " + fmt);
+                emit("pop arg0"); //the handle
+                emit("ffvcall fprintf,0");
+                //need to call fflush(NULL)
+                emit("mov arg0, 0");
+                emit("ffcall fflush");
+                return VarType.VOID;
+            }
+        case "INPUT":
+            {
+                //INPUT LP RP
+                //fgets( ptr, size, stream)
+                //strtol( ptr, eptr, base )
+                emit("mov arg0, fgets_buffer");
+                emit("mov arg1, 64");
+                emit("mov arg2, [stdin]");
+                emit("ffcall fgets");
+                //should do error checking...
+                emit("mov arg0, fgets_buffer");
+                emit("mov arg1, 0");
+                emit("mov arg2, 10");
+                emit("ffcall strtol"); //result is in rax
+                return VarType.INTEGER;
+            }
+        case "READ":
+            {
+                // READ LP expr RP 
+                //fgets( ptr, size, stream)
+                //strtol( ptr, eptr, base )
+                var handletype = exprNodeCode(n.children[2]);
+                if (handletype !== VarType.INTEGER)
+                    throw new Error("write no int");
+                emit("mov arg0, fgets_buffer");
+                emit("mov arg1, 64");
+                emit("pop arg3");
+                emit("mov arg2, arg3");
+                emit("ffcall fgets");
+                //should do error checking...
+                emit("mov arg0, fgets_buffer");
+                emit("mov arg1, 0");
+                emit("mov arg2, 10");
+                emit("ffcall strtol"); //result is in rax
+                return VarType.INTEGER;
+            }
+        case "PRINT":
+            {
+                //console.log("yeet");
+                var handletype = exprNodeCode(n.children[2]);
+                if (handletype !== VarType.STRING && handletype !== VarType.INTEGER)
+                    throw new Error("PRINT expected INTEGER or STRING but received: " + handletype + ".");
+                var fmt = void 0;
+                if (handletype === VarType.INTEGER)
+                    fmt = "string_percent_d";
+                else if (handletype === VarType.STRING)
+                    fmt = "string_percent_s";
+                else
+                    throw new Error("Can only write types INTEGER and STRING.");
+                //console.log("yote");
+                emit("pop arg1");
+                emit("mov arg0, " + fmt);
+                emit("ffvcall printf,0");
+                emit("mov arg0, 0");
+                emit("ffcall fflush");
+                return VarType.VOID;
+            }
     }
 }

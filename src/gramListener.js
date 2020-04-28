@@ -182,6 +182,24 @@ gramListener.prototype.exitNotexp = function(ctx) {
 };
 
 
+// Enter a parse tree produced by gramParser#funcCall.
+gramListener.prototype.enterFuncCall = function(ctx) {
+};
+
+// Exit a parse tree produced by gramParser#funcCall.
+gramListener.prototype.exitFuncCall = function(ctx) {
+};
+
+
+// Enter a parse tree produced by gramParser#builtinFuncCall.
+gramListener.prototype.enterBuiltinFuncCall = function(ctx) {
+};
+
+// Exit a parse tree produced by gramParser#builtinFuncCall.
+gramListener.prototype.exitBuiltinFuncCall = function(ctx) {
+};
+
+
 // Enter a parse tree produced by gramParser#returnStmt.
 gramListener.prototype.enterReturnStmt = function(ctx) {
 };

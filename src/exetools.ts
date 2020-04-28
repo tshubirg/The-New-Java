@@ -101,7 +101,7 @@ function getLinker(objfile: string, exefile: string): [string, string[] ]
     switch (process.platform )
     {
         case "linux":
-            return [ "gcc", ["-m64",objfile,"-o",exefile] ]
+            return [ "gcc", ["-m64 -no-pie",objfile,"-o",exefile] ]
         case "win32":
             //for vs2019:
             //  oldnames.lib has fdopen
